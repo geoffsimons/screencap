@@ -42,7 +42,7 @@ def main():
     """
     global quit_event
     
-    print("Application started. Click the native window's close button or press 'q' to exit.")
+    print("Application started. Press 'q' on your keyboard to exit.")
     
     screen_region = get_primary_monitor_info()
     print(f"Capturing primary monitor with dimensions: {screen_region}")
@@ -73,14 +73,9 @@ def main():
             # Process GUI events with a minimal delay
             key = cv2.waitKey(1)
 
-            # Check for 'q' keypress
+            # Check for 'q' keypress to quit
             if key == ord('q'):
                 print("Quit signal received from keyboard.")
-                quit_event.set()
-                
-            # Check for the native window close event
-            if cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
-                print("Native window was closed by user.")
                 quit_event.set()
                 
     except Exception as e:
