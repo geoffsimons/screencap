@@ -4,24 +4,23 @@ import cv2
 import time
 import threading
 import queue
+import argparse
+import os
 
-from .utils import get_primary_monitor_info
+from .utils import get_primary_monitor_info, find_all_window_coordinates
+from .analysis import analyze_frame_for_numbers
 
-# Global flag and thread-safe queue for inter-thread communication
 capture_queue = queue.Queue(maxsize=1)
 quit_event = threading.Event()
 
 def capture_thread_worker(screen_region):
-    """
-    Worker function for the capture thread. It grabs frames and puts them in a queue.
-    """
     print("Capture thread started.")
     with mss.mss() as sct:
         while not quit_event.is_set():
             sct_img = sct.grab(screen_region)
             frame_np = np.array(sct_img)
             frame_bgr = cv2.cvtColor(frame_np, cv2.COLOR_BGRA2BGR)
-            
+
             try:
                 capture_queue.put_nowait(frame_bgr)
             except queue.Full:
@@ -30,31 +29,62 @@ def capture_thread_worker(screen_region):
                     capture_queue.put_nowait(frame_bgr)
                 except queue.Empty:
                     capture_queue.put_nowait(frame_bgr)
-            
+
             time.sleep(0.005)
 
     print("Capture thread shutting down.")
 
-
 def main():
-    """
-    Main thread function. It handles the GUI and frame display.
-    """
     global quit_event
-    
-    print("Application started. Press 'q' on your keyboard to exit.")
-    
-    screen_region = get_primary_monitor_info()
-    print(f"Capturing primary monitor with dimensions: {screen_region}")
-    
+
+    parser = argparse.ArgumentParser(description="Real-time macOS screencapture and OCR application.")
+    parser.add_argument('--window', type=str, help='The title of the window to capture.')
+    parser.add_argument('--x', type=int, help='The x-coordinate of the capture box top-left corner.')
+    parser.add_argument('--y', type=int, help='The y-coordinate of the capture box top-left corner.')
+    parser.add_argument('--width', type=int, help='The width of the capture box.')
+    parser.add_argument('--height', type=int, help='The height of the capture box.')
+    parser.add_argument('--save', action='store_true', help='Capture a single frame and save it to a file, then exit.')
+
+    args = parser.parse_args()
+
+    # Determine the capture region
+    if args.window:
+        found_windows = find_all_window_coordinates(args.window)
+        if found_windows:
+            screen_region = found_windows[0]
+            print(f"Capturing the first matching window '{screen_region['window_name']}' at coordinates: {screen_region}")
+        else:
+            print(f"Window with title '{args.window}' not found. Exiting.")
+            return
+    elif all([args.x, args.y, args.width, args.height]):
+        screen_region = {'top': args.y, 'left': args.x, 'width': args.width, 'height': args.height}
+        print(f"Capturing custom region: {screen_region}")
+    else:
+        screen_region = get_primary_monitor_info()
+        print(f"No custom region or window specified. Capturing primary monitor with dimensions: {screen_region}")
+
+    if args.save:
+        # Create the 'captures' directory if it doesn't exist
+        save_dir = "captures"
+        os.makedirs(save_dir, exist_ok=True)
+
+        with mss.mss() as sct:
+            sct_img = sct.grab(screen_region)
+            frame_np = np.array(sct_img)
+            frame_bgr = cv2.cvtColor(frame_np, cv2.COLOR_BGRA2BGR)
+
+            filename = os.path.join(save_dir, f"capture_{int(time.time())}.png")
+            cv2.imwrite(filename, frame_bgr)
+            print(f"Saved capture to {os.path.abspath(filename)}")
+            return
+
     last_frame_time = time.time()
-    
     window_name = "Live Screen Feed"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    
+
     capture_thread = threading.Thread(target=capture_thread_worker, args=(screen_region,), daemon=True)
     capture_thread.start()
-    
+
     try:
         while not quit_event.is_set():
             try:
@@ -63,28 +93,27 @@ def main():
                 frame = None
 
             if frame is not None:
+                parsed_numbers, annotated_frame = analyze_frame_for_numbers(frame)
+
                 current_time = time.time()
                 fps = 1 / (current_time - last_frame_time)
                 last_frame_time = current_time
-                cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-                
-                cv2.imshow(window_name, frame)
+                cv2.putText(annotated_frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
-            # Process GUI events with a minimal delay
+                cv2.imshow(window_name, annotated_frame)
+
             key = cv2.waitKey(1)
-
-            # Check for 'q' keypress to quit
             if key == ord('q'):
                 print("Quit signal received from keyboard.")
                 quit_event.set()
-                
+
     except Exception as e:
         print(f"An unexpected error occurred in the main thread: {e}")
-        
+
     finally:
         if not quit_event.is_set():
             quit_event.set()
-            
+
         cv2.destroyAllWindows()
         print("Main thread shutting down.")
 
