@@ -44,10 +44,34 @@ def main():
     parser.add_argument('--width', type=int, help='The width of the capture box.')
     parser.add_argument('--height', type=int, help='The height of the capture box.')
     parser.add_argument('--save', action='store_true', help='Capture a single frame and save it to a file, then exit.')
+    parser.add_argument('--load_file', type=str, help='Load an image file from disk, analyze it, and display the results.')
 
     args = parser.parse_args()
 
-    # Determine the capture region
+    # If --load_file is provided, we skip all capture logic and go straight to analysis.
+    if args.load_file:
+        if not os.path.exists(args.load_file):
+            print(f"Error: The file '{args.load_file}' was not found.")
+            return
+
+        frame = cv2.imread(args.load_file)
+        if frame is None:
+            print(f"Error: Could not load image from '{args.load_file}'.")
+            return
+
+        print(f"Loading and analyzing image from '{args.load_file}'...")
+        parsed_numbers, annotated_frame = analyze_frame_for_numbers(frame)
+
+        window_name = "Analysis Result"
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.imshow(window_name, annotated_frame)
+
+        print("Analysis complete. Press any key to exit.")
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        return
+
+    # Determine the capture region for live mode or saving.
     if args.window:
         found_windows = find_all_window_coordinates(args.window)
         if found_windows:
