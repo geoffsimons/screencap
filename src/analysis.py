@@ -32,18 +32,18 @@ def analyze_frame_for_numbers(frame):
     # 2. Find contours
     contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    # Filter contours based on size and aspect ratio to find potential text
+    min_area = 100
+    min_width = 10
+    min_height = 10
+    max_aspect_ratio = 5
+
     # 3. Loop over the contours and filter them
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
 
         print(f"box: {(x,y,w,h)}")
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
-        # Filter contours based on size and aspect ratio to find potential text
-        min_area = 100
-        min_width = 10
-        min_height = 10
-        max_aspect_ratio = 5
 
         if cv2.contourArea(contour) > min_area and w > min_width and h > min_height and w/h < max_aspect_ratio:
             # 4. Extract the ROI
