@@ -21,14 +21,18 @@ def capture_thread_worker(screen_region):
             frame_np = np.array(sct_img)
             frame_bgr = cv2.cvtColor(frame_np, cv2.COLOR_BGRA2BGR)
 
+            # Resize the frame by 50% to account for Retina scaling
+            height, width, _ = frame_bgr.shape
+            resized_frame = cv2.resize(frame_bgr, (width // 2, height // 2), interpolation=cv2.INTER_AREA)
+
             try:
-                capture_queue.put_nowait(frame_bgr)
+                capture_queue.put_nowait(resized_frame)
             except queue.Full:
                 try:
                     capture_queue.get_nowait()
-                    capture_queue.put_nowait(frame_bgr)
+                    capture_queue.put_nowait(resized_frame)
                 except queue.Empty:
-                    capture_queue.put_nowait(frame_bgr)
+                    capture_queue.put_nowait(resized_frame)
 
             time.sleep(0.005)
 
@@ -97,8 +101,12 @@ def main():
             frame_np = np.array(sct_img)
             frame_bgr = cv2.cvtColor(frame_np, cv2.COLOR_BGRA2BGR)
 
+            # Resize the frame by 50% for Retina
+            height, width, _ = frame_bgr.shape
+            resized_frame = cv2.resize(frame_bgr, (width // 2, height // 2), interpolation=cv2.INTER_AREA)
+
             filename = os.path.join(save_dir, f"capture_{int(time.time())}.png")
-            cv2.imwrite(filename, frame_bgr)
+            cv2.imwrite(filename, resized_frame)
             print(f"Saved capture to {os.path.abspath(filename)}")
             return
 

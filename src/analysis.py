@@ -36,6 +36,9 @@ def analyze_frame_for_numbers(frame):
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
 
+        print(f"box: {(x,y,w,h)}")
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
         # Filter contours based on size and aspect ratio to find potential text
         min_area = 100
         min_width = 10
@@ -54,6 +57,6 @@ def analyze_frame_for_numbers(frame):
                 results.append((parsed_text, x, y, w, h))
 
                 # Optional: draw a green rectangle on the original frame to visualize the detected ROI
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                # cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
     return results, frame
