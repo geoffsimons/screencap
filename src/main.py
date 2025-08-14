@@ -49,6 +49,7 @@ def main():
     parser.add_argument('--height', type=int, help='The height of the capture box.')
     parser.add_argument('--save', action='store_true', help='Capture a single frame and save it to a file, then exit.')
     parser.add_argument('--load_file', type=str, help='Load an image file from disk, analyze it, and display the results.')
+    parser.add_argument('--debug', action='store_true', help='Enable debug mode (e.g., show intermediate image processing steps)')
 
     args = parser.parse_args()
 
@@ -64,7 +65,7 @@ def main():
             return
 
         print(f"Loading and analyzing image from '{args.load_file}'...")
-        boxes, annotated_frame = analyze_frame_for_components(frame)
+        boxes, annotated_frame = analyze_frame_for_components(frame, args.debug)
 
         window_name = "Analysis Result"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
