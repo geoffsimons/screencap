@@ -27,7 +27,7 @@ def analyze_frame_for_components(frame):
 
     # Create a kernel for morphological transformations to help connect
     # fragmented or broken shapes. A rectangular kernel is effective for text and grids.
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 3))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
 
     # Apply dilation to "fatten" up the shapes and close any small gaps.
     dilated = cv2.dilate(thresh, kernel, iterations=1)

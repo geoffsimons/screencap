@@ -8,7 +8,7 @@ import argparse
 import os
 
 from .utils import get_primary_monitor_info, find_all_window_coordinates
-from .analysis import analyze_frame_for_numbers
+from .analysis import analyze_frame_for_components
 
 capture_queue = queue.Queue(maxsize=1)
 quit_event = threading.Event()
@@ -64,7 +64,7 @@ def main():
             return
 
         print(f"Loading and analyzing image from '{args.load_file}'...")
-        parsed_numbers, annotated_frame = analyze_frame_for_numbers(frame)
+        boxes, annotated_frame = analyze_frame_for_components(frame)
 
         window_name = "Analysis Result"
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
