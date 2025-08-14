@@ -2,61 +2,65 @@ import cv2
 import numpy as np
 import pytesseract
 
-def get_numbers_from_roi(roi_image):
-    """
-    Performs OCR on a pre-cropped ROI image.
-    This is a simplified version of our previous function.
-    """
-    # Pre-process the image specifically for OCR
-    gray = cv2.cvtColor(roi_image, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-
-    # Perform OCR, configured to recognize only digits
-    ocr_result = pytesseract.image_to_string(thresh, config='--psm 6 -c tessedit_char_whitelist=0123456789')
-
-    return ocr_result.strip()
-
 def analyze_frame_for_numbers(frame):
     """
-    Detects numeric ROIs in a frame and performs OCR on each.
-    Returns a list of tuples: (parsed_text, x, y, w, h).
+    Analyzes a single frame to find and OCR numbers.
+    Args:
+        frame: A numpy array representing the image frame.
+    Returns:
+        A tuple containing:
+        - A dictionary of parsed numbers.
+        - The original frame with detected numbers and boxes drawn on it.
     """
-    results = []
-
-    # 1. Pre-process the frame for contour detection
+    # Convert the frame to grayscale for processing
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # Apply a morphological operation to connect close characters
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 3))
-    dilated = cv2.dilate(gray, kernel, iterations=1)
 
-    # 2. Find contours
+    # Apply a binary threshold to get a black and white image
+    # The THRESH_OTSU flag automatically determines the optimal threshold value
+    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+
+    # Create a kernel for morphological transformations
+    # A 15x3 rectangular kernel is good for connecting horizontal segments of numbers
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 3))
+
+    # Apply dilation to fill in gaps in numbers (e.g., a broken '8')
+    # This helps find a single contour for each number
+    dilated = cv2.dilate(thresh, kernel, iterations=1)
+
+    # --- New code to visualize the dilated image ---
+    cv2.imshow("Dilated Image", dilated)
+    # -----------------------------------------------
+
+    # Find contours in the dilated image
+    # RETR_EXTERNAL retrieves only the external contours, ignoring nested ones
+    # CHAIN_APPROX_SIMPLE compresses horizontal and vertical segments
     contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Filter contours based on size and aspect ratio to find potential text
-    min_area = 100
-    min_width = 10
-    min_height = 10
-    max_aspect_ratio = 5
+    # Create a list to store the detected numbers and their bounding boxes
+    detected_numbers = []
+    annotated_frame = frame.copy()
 
-    # 3. Loop over the contours and filter them
     for contour in contours:
+        # Get the bounding box for each contour
         x, y, w, h = cv2.boundingRect(contour)
 
-        print(f"box: {(x,y,w,h)}")
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        # Draw a rectangle around the contour for visualization
+        cv2.rectangle(annotated_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        if cv2.contourArea(contour) > min_area and w > min_width and h > min_height and w/h < max_aspect_ratio:
-            # 4. Extract the ROI
-            roi = frame[y:y+h, x:x+w]
+        # Print the box for debugging
+        # Note: These coordinates are for the resized frame. For the original
+        # screen, you would need to scale them up by 2 (e.g., x * 2, y * 2, etc.)
+        print(f"box: {(x, y, w, h)}")
 
-            # 5. Perform OCR
-            parsed_text = get_numbers_from_roi(roi)
+        # Extract the region of interest (ROI) for OCR
+        roi = annotated_frame[y:y+h, x:x+w]
 
-            # 6. Add results if OCR was successful
-            if parsed_text:
-                results.append((parsed_text, x, y, w, h))
+        # Use Tesseract to perform OCR on the ROI
+        text = pytesseract.image_to_string(roi, config='--psm 6 outputbase digits').strip()
 
-                # Optional: draw a green rectangle on the original frame to visualize the detected ROI
-                # cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        if text.isdigit():
+            detected_numbers.append({'number': int(text), 'box': (x, y, w, h)})
+            # Optionally, you can draw the detected number on the frame as well
+            cv2.putText(annotated_frame, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
 
-    return results, frame
+    return detected_numbers, annotated_frame
