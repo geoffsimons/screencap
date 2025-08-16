@@ -44,10 +44,29 @@ def analyze_frame_for_components(frame, debug_mode=False):
     # Also dilate the inverted image
     dilated_inv = cv2.dilate(thresh_inv, kernel, iterations=1)
 
+    # --- New Edge Detection Examples (for debugging) ---
+    if debug_mode:
+        # First, apply a Gaussian blur to reduce noise. This helps the Canny
+        # detector find cleaner, more significant edges.
+        # blurred_gray = cv2.GaussianBlur(gray, (5, 5), 0)
+        # cv2.imshow("Blurred Image", blurred_gray)
+
+        # Example 1: Canny edge detection on the blurred grayscale image.
+        # The two thresholds (100 and 200) control what is considered an edge.
+        # A pixel is considered an edge if its gradient is between these two values.
+        # canny_edges = cv2.Canny(blurred_gray, 100, 200)
+        # cv2.imshow("Blurred Canny Edges", canny_edges)
+
+        # Example 2: Canny on unblurred image
+        unblurred_canny_edges = cv2.Canny(gray, 100, 200)
+        cv2.imshow("Canny Edges", unblurred_canny_edges)
+    # --------------------------------------------------
+
     if debug_mode:
         cv2.imshow("Original Threshold", thresh)
+        # cv2.imshow("Inverted Threshold", thresh_inv)
         cv2.imshow("Dilated Image", dilated)
-        cv2.imshow("Inverted Dilated Image", dilated_inv)
+        # cv2.imshow("Inverted Dilated Image", dilated_inv)
 
     # Combine the contours from both the dilated and inverted dilated images
     # to capture both light-on-dark and dark-on-light components.
