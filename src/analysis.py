@@ -39,10 +39,6 @@ def calculate_edge_change(frame_buffer):
     total_change = 0.0
     num_comparisons = len(frame_buffer) - 1
 
-    # Get the dimensions of the edge frames for normalization
-    height, width = frame_buffer[0]['frame'].shape
-    total_pixels = height * width
-
     # Get the first edge frame from the dictionary
     previous_edges = frame_buffer[0]['frame']
 
@@ -50,18 +46,33 @@ def calculate_edge_change(frame_buffer):
     for i in range(1, len(frame_buffer)):
         current_edges = frame_buffer[i]['frame']
 
+        # Find the pixels that are non-black (i.e., are edges) in either the
+        # previous or current frame. This creates a mask of all relevant pixels.
+        relevant_pixels_mask = (previous_edges > 0) | (current_edges > 0)
+
         # Calculate the absolute difference between the two edge images.
         # Since Canny edges are binary (0 or 255), this will show where edges
         # appear or disappear.
         diff = cv2.absdiff(previous_edges, current_edges)
 
-        # Sum up all the changes (the pixel values in the diff image).
-        # We divide by 255 because Canny outputs 255 for edges, so we want
-        # a count of changed pixels, not the sum of their values.
-        change_score = np.sum(diff / 255)
+        # Apply the mask to the difference image, so we only consider
+        # changes where there was an edge in at least one frame.
+        masked_diff = diff[relevant_pixels_mask]
 
-        # Normalize the change score by the total number of pixels to get a value from 0 to 1.
-        normalized_change = change_score / total_pixels
+        # Count the number of pixels that have changed within the masked area.
+        # Since Canny outputs 255 for edges, we divide by 255.
+        change_score = np.sum(masked_diff / 255)
+
+        # Get the total number of relevant (non-black) pixels for normalization
+        total_relevant_pixels = np.sum(relevant_pixels_mask)
+
+        # Avoid division by zero
+        if total_relevant_pixels == 0:
+            normalized_change = 0.0
+        else:
+            # Normalize the change score by the number of relevant pixels,
+            # not the total number of pixels in the image.
+            normalized_change = change_score / total_relevant_pixels
 
         # Add the normalized change to the total
         total_change += normalized_change
