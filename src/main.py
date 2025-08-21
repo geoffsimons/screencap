@@ -9,7 +9,7 @@ import os
 import traceback
 
 from .utils import get_primary_monitor_info, find_all_window_coordinates
-from .analysis import analyze_frame_for_components
+from .analysis import analyze_frame_for_components, frame_to_edges
 
 capture_queue = queue.Queue(maxsize=1)
 quit_event = threading.Event()
@@ -118,7 +118,6 @@ def main():
 
     # Get the start time to calculate FPS
     start_time = time.time()
-    frame_count = 0
 
     last_frame_time = time.time()
     window_name = "Live Screen Feed"
@@ -135,33 +134,36 @@ def main():
                 frame = None
 
             if frame is not None:
+                first_frame = frames_buffer[0] if frames_buffer else {'timestamp': start_time}
+
                 last_frame = frames_buffer[-1] if frames_buffer else {'timestamp': start_time}
 
                 # print("Last frame:", last_frame)
-
-                # parsed_numbers, annotated_frame = analyze_frame_for_numbers(frame)
                 last_frame_time = last_frame['timestamp']
+                first_frame_time = first_frame['timestamp']
+                # Set the current time to the time of capture, before processing.
+                current_time = time.time()
+
+                # For unprocessed testing of frame buffer and base FPS
+                # annotated_frame = frame
+                # parsed_numbers, annotated_frame = analyze_frame_for_numbers(frame)
+                annotated_frame = frame_to_edges(frame)
 
                 # Add the current frame and its timestamp to the buffer
-                current_time = time.time()
                 # TODO: We should store processed frames so we are only processing them once before
                 #       comparison with other frames in the buffer.
-                frames_buffer.append({'frame': frame, 'timestamp': current_time})
+                frames_buffer.append({'frame': annotated_frame, 'timestamp': current_time})
 
                 # Keep the buffer at a fixed size
                 if len(frames_buffer) > frame_buffer_size:
                     frames_buffer.pop(0)
 
-                # For unprocessed testing of frame buffer and base FPS
-                annotated_frame = frame
-
                 fps = 1 / (current_time - last_frame_time)
-                frame_count += 1
 
-                elapsed_time = current_time - start_time
-                avg_fps = frame_count / elapsed_time
+                elapsed_time = current_time - first_frame_time
+                avg_fps = len(frames_buffer) / elapsed_time
 
-                cv2.putText(annotated_frame, f"FPS: {fps:.2f} AVG: {avg_fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                cv2.putText(annotated_frame, f"FPS: {fps:.2f} AVG: {avg_fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, 255, 2, cv2.LINE_AA)
 
                 cv2.imshow(window_name, annotated_frame)
 

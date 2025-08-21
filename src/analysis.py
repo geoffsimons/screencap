@@ -1,6 +1,23 @@
 import cv2
 import numpy as np
 
+def frame_to_edges(frame):
+    """
+    Convert the frame to it's edges using Canny
+    """
+    # Create a blurred version of the image to smooth out noise.
+    blurred = cv2.GaussianBlur(frame, (5, 5), 0)
+
+    # Convert the frame to grayscale for simpler processing
+    gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
+
+    # Use Canny edge detection to find the outlines of components. This provides
+    # a clean binary image of edges, which is perfect for contour finding.
+    # The thresholds (100 and 200) are crucial and might need fine-tuning.
+    canny_edges = cv2.Canny(gray, 100, 200)
+
+    return canny_edges
+
 def analyze_frame_for_components(frame, debug_mode=False):
     """
     Analyzes a single frame to find the bounding boxes of all major components.
