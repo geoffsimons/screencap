@@ -6,12 +6,14 @@ import threading
 import queue
 import argparse
 import os
+import traceback
 
 from .utils import get_primary_monitor_info, find_all_window_coordinates
 from .analysis import analyze_frame_for_components
 
 capture_queue = queue.Queue(maxsize=1)
 quit_event = threading.Event()
+frame_buffer_size = 10
 
 def capture_thread_worker(screen_region):
     print("Capture thread started.")
@@ -111,6 +113,13 @@ def main():
             print(f"Saved capture to {os.path.abspath(filename)}")
             return
 
+    # Store recent frames and their timestamps
+    frames_buffer = []
+
+    # Get the start time to calculate FPS
+    start_time = time.time()
+    frame_count = 0
+
     last_frame_time = time.time()
     window_name = "Live Screen Feed"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
@@ -126,12 +135,33 @@ def main():
                 frame = None
 
             if frame is not None:
-                parsed_numbers, annotated_frame = analyze_frame_for_numbers(frame)
+                last_frame = frames_buffer[-1] if frames_buffer else {'timestamp': start_time}
 
+                # print("Last frame:", last_frame)
+
+                # parsed_numbers, annotated_frame = analyze_frame_for_numbers(frame)
+                last_frame_time = last_frame['timestamp']
+
+                # Add the current frame and its timestamp to the buffer
                 current_time = time.time()
+                # TODO: We should store processed frames so we are only processing them once before
+                #       comparison with other frames in the buffer.
+                frames_buffer.append({'frame': frame, 'timestamp': current_time})
+
+                # Keep the buffer at a fixed size
+                if len(frames_buffer) > frame_buffer_size:
+                    frames_buffer.pop(0)
+
+                # For unprocessed testing of frame buffer and base FPS
+                annotated_frame = frame
+
                 fps = 1 / (current_time - last_frame_time)
-                last_frame_time = current_time
-                cv2.putText(annotated_frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                frame_count += 1
+
+                elapsed_time = current_time - start_time
+                avg_fps = frame_count / elapsed_time
+
+                cv2.putText(annotated_frame, f"FPS: {fps:.2f} AVG: {avg_fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
                 cv2.imshow(window_name, annotated_frame)
 
@@ -142,6 +172,7 @@ def main():
 
     except Exception as e:
         print(f"An unexpected error occurred in the main thread: {e}")
+        traceback.print_exc()
 
     finally:
         if not quit_event.is_set():
