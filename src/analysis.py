@@ -18,6 +18,60 @@ def frame_to_edges(frame):
 
     return canny_edges
 
+def calculate_edge_change(frame_buffer):
+    """
+    Calculates the average change in edges between consecutive frames in a buffer.
+
+    Args:
+        frame_buffer (list): A list of dictionaries, where each dictionary has
+                             'frame' (a numpy array of canny edges) and 'timestamp' fields.
+
+    Returns:
+        float: A value from 0.0 to 1.0 expressing how much the edges are changing,
+               where 0.0 means no change and 1.0 means the edges are completely
+               different. Returns 0.0 if the buffer has fewer than two frames.
+    """
+    # Check if there are at least two frames to compare.
+    if len(frame_buffer) < 2:
+        print("Not enough frames in the buffer to calculate change. At least 2 are needed.")
+        return 0.0
+
+    total_change = 0.0
+    num_comparisons = len(frame_buffer) - 1
+
+    # Get the dimensions of the edge frames for normalization
+    height, width = frame_buffer[0]['frame'].shape
+    total_pixels = height * width
+
+    # Get the first edge frame from the dictionary
+    previous_edges = frame_buffer[0]['frame']
+
+    # Iterate through the rest of the frames in the buffer
+    for i in range(1, len(frame_buffer)):
+        current_edges = frame_buffer[i]['frame']
+
+        # Calculate the absolute difference between the two edge images.
+        # Since Canny edges are binary (0 or 255), this will show where edges
+        # appear or disappear.
+        diff = cv2.absdiff(previous_edges, current_edges)
+
+        # Sum up all the changes (the pixel values in the diff image).
+        # We divide by 255 because Canny outputs 255 for edges, so we want
+        # a count of changed pixels, not the sum of their values.
+        change_score = np.sum(diff / 255)
+
+        # Normalize the change score by the total number of pixels to get a value from 0 to 1.
+        normalized_change = change_score / total_pixels
+
+        # Add the normalized change to the total
+        total_change += normalized_change
+
+        # Update the previous_edges for the next iteration
+        previous_edges = current_edges
+
+    # Return the average change across all comparisons
+    return total_change / num_comparisons
+
 def analyze_frame_for_components(frame, debug_mode=False):
     """
     Analyzes a single frame to find the bounding boxes of all major components.

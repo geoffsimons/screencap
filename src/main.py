@@ -9,7 +9,7 @@ import os
 import traceback
 
 from .utils import get_primary_monitor_info, find_all_window_coordinates
-from .analysis import analyze_frame_for_components, frame_to_edges
+from .analysis import analyze_frame_for_components, calculate_edge_change, frame_to_edges
 
 capture_queue = queue.Queue(maxsize=1)
 quit_event = threading.Event()
@@ -163,7 +163,9 @@ def main():
                 elapsed_time = current_time - first_frame_time
                 avg_fps = len(frames_buffer) / elapsed_time
 
-                cv2.putText(annotated_frame, f"FPS: {fps:.2f} AVG: {avg_fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, 255, 2, cv2.LINE_AA)
+                change = calculate_edge_change(frames_buffer)
+
+                cv2.putText(annotated_frame, f"FPS: {fps:.2f} AVG: {avg_fps:.2f} change: {change:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, 255, 2, cv2.LINE_AA)
 
                 cv2.imshow(window_name, annotated_frame)
 
