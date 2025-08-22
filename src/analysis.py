@@ -34,7 +34,7 @@ def calculate_edge_change(frame_buffer):
     # Check if there are at least two frames to compare.
     if len(frame_buffer) < 2:
         print("Not enough frames in the buffer to calculate change. At least 2 are needed.")
-        return 0.0
+        return 0.0, None
 
     total_change = 0.0
     num_comparisons = len(frame_buffer) - 1
@@ -77,11 +77,24 @@ def calculate_edge_change(frame_buffer):
         # Add the normalized change to the total
         total_change += normalized_change
 
+        # Check if this is the last iteration to create the annotated frame
+        if i == len(frame_buffer) - 1:
+            # Convert the current edges to a color image to draw the diff
+            annotated_frame = cv2.cvtColor(current_edges, cv2.COLOR_GRAY2BGR)
+
+            # Find the coordinates where a change occurred (diff > 0)
+            change_y, change_x = np.where(diff > 0)
+
+            # Draw the changed pixels in green on the annotated frame
+            for y, x in zip(change_y, change_x):
+                # Set the pixel to green (0, 255, 0)
+                annotated_frame[y, x] = [0, 255, 0]
+
         # Update the previous_edges for the next iteration
         previous_edges = current_edges
 
-    # Return the average change across all comparisons
-    return total_change / num_comparisons
+    # Return the average change across all comparisons and the annotated frame
+    return total_change / num_comparisons, annotated_frame
 
 def analyze_frame_for_components(frame, debug_mode=False):
     """

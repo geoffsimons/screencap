@@ -134,28 +134,18 @@ def main():
                 frame = None
 
             if frame is not None:
-                first_frame = frames_buffer[0] if frames_buffer else {'timestamp': start_time}
-
                 last_frame = frames_buffer[-1] if frames_buffer else {'timestamp': start_time}
 
                 # print("Last frame:", last_frame)
                 last_frame_time = last_frame['timestamp']
 
-                # first time used for avg fps, but we don't really need it.
-                # first_frame_time = first_frame['timestamp']
-
                 # Set the current time to the time of capture, before processing.
                 current_time = time.time()
 
-                # For unprocessed testing of frame buffer and base FPS
-                # annotated_frame = frame
-                # parsed_numbers, annotated_frame = analyze_frame_for_numbers(frame)
-                annotated_frame = frame_to_edges(frame)
+                edge_frame = frame_to_edges(frame)
 
                 # Add the current frame and its timestamp to the buffer
-                # TODO: We should store processed frames so we are only processing them once before
-                #       comparison with other frames in the buffer.
-                frames_buffer.append({'frame': annotated_frame, 'timestamp': current_time})
+                frames_buffer.append({'frame': edge_frame, 'timestamp': current_time})
 
                 # Keep the buffer at a fixed size
                 if len(frames_buffer) > frame_buffer_size:
@@ -163,14 +153,13 @@ def main():
 
                 fps = 1 / (current_time - last_frame_time)
 
-                # elapsed_time = current_time - first_frame_time
-                # avg_fps = len(frames_buffer) / elapsed_time
+                change, annotated_frame = calculate_edge_change(frames_buffer)
 
-                change = calculate_edge_change(frames_buffer)
-
-                cv2.putText(annotated_frame, f"FPS: {fps:.2f} change: {change:.4f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, 255, 2, cv2.LINE_AA)
-
-                cv2.imshow(window_name, annotated_frame)
+                if annotated_frame is not None:
+                    cv2.putText(annotated_frame, f"FPS: {fps:.2f} change: {change:.4f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, 255, 2, cv2.LINE_AA)
+                    cv2.imshow(window_name, annotated_frame)
+                else:
+                    print("Waiting for a non-None frame to show")
 
             key = cv2.waitKey(1)
             if key == ord('q'):
