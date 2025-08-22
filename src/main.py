@@ -140,7 +140,10 @@ def main():
 
                 # print("Last frame:", last_frame)
                 last_frame_time = last_frame['timestamp']
-                first_frame_time = first_frame['timestamp']
+
+                # first time used for avg fps, but we don't really need it.
+                # first_frame_time = first_frame['timestamp']
+
                 # Set the current time to the time of capture, before processing.
                 current_time = time.time()
 
@@ -160,12 +163,12 @@ def main():
 
                 fps = 1 / (current_time - last_frame_time)
 
-                elapsed_time = current_time - first_frame_time
-                avg_fps = len(frames_buffer) / elapsed_time
+                # elapsed_time = current_time - first_frame_time
+                # avg_fps = len(frames_buffer) / elapsed_time
 
                 change = calculate_edge_change(frames_buffer)
 
-                cv2.putText(annotated_frame, f"FPS: {fps:.2f} AVG: {avg_fps:.2f} change: {change:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, 255, 2, cv2.LINE_AA)
+                cv2.putText(annotated_frame, f"FPS: {fps:.2f} change: {change:.4f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, 255, 2, cv2.LINE_AA)
 
                 cv2.imshow(window_name, annotated_frame)
 
