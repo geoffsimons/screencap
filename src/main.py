@@ -20,8 +20,8 @@ FRAME_BUFFER_SIZE = 10
 # The duration of the data to display on the graph in seconds.
 GRAPH_WINDOW_SECONDS = 10
 # The width and height of the OpenCV window.
-GRAPH_WIDTH = 800
-GRAPH_HEIGHT = 600
+GRAPH_WIDTH = 600
+GRAPH_HEIGHT = 300
 
 def capture_thread_worker(screen_region):
     print("Capture thread started.")
@@ -133,9 +133,11 @@ def main():
     last_frame_time = time.time()
     window_name = "Live Screen Feed"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+    cv2.moveWindow(window_name, args.x + args.width, 0)
 
     change_window_name = "Change Graph"
     cv2.namedWindow(change_window_name, cv2.WINDOW_NORMAL)
+    cv2.moveWindow(change_window_name, args.x + args.width, args.height + 25)
 
     capture_thread = threading.Thread(target=capture_thread_worker, args=(screen_region,), daemon=True)
     capture_thread.start()
