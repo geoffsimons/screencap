@@ -10,10 +10,18 @@ import traceback
 
 from .utils import get_primary_monitor_info, find_all_window_coordinates
 from .analysis import analyze_frame_for_components, calculate_edge_change, frame_to_edges
+from .viz import create_graph_image
 
 capture_queue = queue.Queue(maxsize=1)
 quit_event = threading.Event()
-frame_buffer_size = 10
+FRAME_BUFFER_SIZE = 10
+
+# --- Configuration ---
+# The duration of the data to display on the graph in seconds.
+GRAPH_WINDOW_SECONDS = 10
+# The width and height of the OpenCV window.
+GRAPH_WIDTH = 800
+GRAPH_HEIGHT = 600
 
 def capture_thread_worker(screen_region):
     print("Capture thread started.")
@@ -116,6 +124,9 @@ def main():
     # Store recent frames and their timestamps
     frames_buffer = []
 
+    # Array to hold
+    change_buffer = []
+
     # Get the start time to calculate FPS
     start_time = time.time()
 
@@ -123,8 +134,17 @@ def main():
     window_name = "Live Screen Feed"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
 
+    change_window_name = "Change Graph"
+    cv2.namedWindow(change_window_name, cv2.WINDOW_NORMAL)
+
     capture_thread = threading.Thread(target=capture_thread_worker, args=(screen_region,), daemon=True)
     capture_thread.start()
+
+    graph_options = {
+        'width': GRAPH_WIDTH,
+        'height': GRAPH_HEIGHT,
+        'seconds': GRAPH_WINDOW_SECONDS
+    }
 
     try:
         while not quit_event.is_set():
@@ -148,12 +168,21 @@ def main():
                 frames_buffer.append({'frame': edge_frame, 'timestamp': current_time})
 
                 # Keep the buffer at a fixed size
-                if len(frames_buffer) > frame_buffer_size:
+                if len(frames_buffer) > FRAME_BUFFER_SIZE:
                     frames_buffer.pop(0)
 
                 fps = 1 / (current_time - last_frame_time)
 
                 change, annotated_frame = calculate_edge_change(frames_buffer)
+
+                change_buffer.append((current_time, change))
+
+                graph_start_time = current_time - GRAPH_WINDOW_SECONDS
+                while change_buffer and change_buffer[0][0] < graph_start_time:
+                    change_buffer.pop(0)
+
+                graph_img = create_graph_image(change_buffer, graph_options)
+                cv2.imshow(change_window_name, graph_img)
 
                 if annotated_frame is not None:
                     cv2.putText(annotated_frame, f"FPS: {fps:.2f} change: {change:.4f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, 255, 2, cv2.LINE_AA)
