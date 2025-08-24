@@ -143,7 +143,9 @@ def main():
     graph_options = {
         'width': GRAPH_WIDTH,
         'height': GRAPH_HEIGHT,
-        'seconds': GRAPH_WINDOW_SECONDS
+        'seconds': GRAPH_WINDOW_SECONDS,
+        'min_y': 0,
+        'max_y': 1
     }
 
     try:

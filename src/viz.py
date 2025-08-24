@@ -13,7 +13,8 @@ def create_graph_image(data_points, options):
     Args:
         data_points (list): A list of (timestamp, value) tuples.
         options (dict): A dictionary containing graph configuration,
-                        including 'height', 'width', and 'seconds'.
+                        including 'height', 'width', and 'seconds',
+                        and optional 'min_y' and 'max_y' for fixed scaling.
 
     Returns:
         np.ndarray: A BGR-formatted image array suitable for OpenCV display.
@@ -27,19 +28,28 @@ def create_graph_image(data_points, options):
         return graph_img
 
     # Normalize data to fit within the graph dimensions.
-    # We need to find the min/max values and timestamps to scale the graph.
     timestamps = [point[0] for point in data_points]
     values = [point[1] for point in data_points]
 
     min_time = min(timestamps)
     max_time = max(timestamps)
-    min_value = min(values)
-    max_value = max(values)
 
-    # Add some padding to the y-axis for better visualization.
-    y_padding = (max_value - min_value) * 0.1
-    min_value_padded = min_value - y_padding
-    max_value_padded = max_value + y_padding
+    # --- Y-Axis Scaling Logic ---
+    # Use the specified min/max values if they exist, otherwise autoscale.
+    min_value_padded = options.get('min_y', None)
+    max_value_padded = options.get('max_y', None)
+
+    # If min_y and max_y are not provided, autoscale.
+    if min_value_padded is None or max_value_padded is None:
+        min_value = min(values)
+        max_value = max(values)
+        y_padding = (max_value - min_value) * 0.1
+        min_value_padded = min_value - y_padding
+        max_value_padded = max_value + y_padding
+
+    # Handle the edge case where the value range is zero.
+    if (max_value_padded - min_value_padded) == 0:
+        max_value_padded += 1 # Avoid division by zero
 
     # Create a list to hold the normalized pixel points.
     points = []
@@ -52,10 +62,7 @@ def create_graph_image(data_points, options):
             x = int((t - min_time) / (max_time - min_time) * width)
 
         # Normalize the value (y-axis) to the graph height.
-        if (max_value_padded - min_value_padded) == 0:
-            y = 0
-        else:
-            y = int((v - min_value_padded) / (max_value_padded - min_value_padded) * height)
+        y = int((v - min_value_padded) / (max_value_padded - min_value_padded) * height)
 
         # The y-axis in images goes from top to bottom, so we invert the y-coordinate.
         y = height - y
